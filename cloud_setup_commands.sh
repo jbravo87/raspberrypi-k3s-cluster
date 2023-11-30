@@ -7,7 +7,7 @@ ip r
 # DNS IP addy
 grep "nameserver" /etc/resolv.conf
 # Get quick info on all nodes in my cluster
-sudo kunectl get nodes
+sudo kubectl get nodes
 # (not sure)
 sudo kubectl config current-context
 # Check the contents of traefik.yaml file
@@ -119,3 +119,60 @@ sudo mkfs.ext4 /dev/sdXY
 # Link a drive to another drive
 ln -s MOUNT_LOCATION LINK_LOCATION
 ln -s /media/external_ssd ~/external_ssd
+
+# For easy access to nodes, add them to the ssh config file
+sudo nano ~/.ssh/config
+
+# e.g.
+# Host Node1
+#   HostName rpi-node-1.local
+#   User <username>
+#   IdentityFile ~/.ssh/<private-ssh-key-file>
+
+# Digital Signature Algorithm standarized by the US government, using elliptic curves.
+# Use this algorithm to generate new keys
+ssh-keygen -t ecdsa -b 521
+# Can also specify the filename and location
+ssh-keygen -f ~/tatu-key-ecdsa -t ecdsa -b 521
+ssh-keygen -f rpi4-node-key -t ed25519 -C "yournameOrEmail"
+
+# Copy public key to destination system
+# System that you want passwordless SSH access to
+ssh-copy-id -i my_id.pub root@tf2 
+
+# Get cluster info
+kubectl cluster-info
+
+# Check the uncomplicated firewall (ufw)
+# Check whether UFW is running
+sudo ufw status
+
+# Want to create a basic auth file to get the longhorn ui
+USER=<USERNAME_HERE>; PASSWORD=<PASSWORD_HERE>; echo "${USER}:$(openssl passwd -stdin -apr1 <<< ${PASSWORD})" >> auth
+
+# Create a secret
+kubectl -n longhorn-system create secret generic basic-auth --from-file=auth
+
+# Create the ingress
+kubectl -n longhorn-system apply -f longhorn-ingress.yaml
+
+# Check the ingress
+kubectl -n longhorn-system get ingress
+
+# Quick check
+curl -v http://97.107.142.125/
+
+# Get the namespace in the longhorn system
+kubectl get svc -n longhorn-system
+
+# command used to find dependend resources
+kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n longhorn-system
+
+# Listing the pods
+kubectl get pods
+
+# Delete a k3s pod
+kubectl delete pod <pod-name>
+
+# Environment check script
+curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/v1.4.0/scripts/environment_check.sh | bash
